@@ -1,0 +1,1 @@
+node_modules/\ndist/\ndata-scripts/coverage_*.csv\ndata-scripts/extracted_*\ndata-scripts/*.zip\n.DS_Store

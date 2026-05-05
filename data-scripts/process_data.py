@@ -4,6 +4,12 @@ import pandas as pd
 import json
 import time
 
+# Note: Python Supabase client is having issues installing.
+# We will generate the files locally, and you can upload them manually 
+# to your Supabase 'screening-data' bucket for now.
+# map_data.json -> screening-data/map_data.json
+# metadata.json -> screening-data/metadata.json
+
 # Setup directories
 DATA_DIR = "public/data"
 SCRIPTS_DIR = "data-scripts"
@@ -42,11 +48,9 @@ for label, indicator_id in indicators.items():
     area_types = ['District', 'UA', 'County', 'Upper tier local authority', 'Lower tier local authority']
     df_filtered = df[df['Area Type'].isin(area_types)]
     
-    print(f"Found {len(df_filtered)} rows for {label} after filtering area types.")
-    
     for _, row in df_filtered.iterrows():
         area_code = row['Area Code']
-        period = str(row['Time period']) # e.g. "2023/24" or "2024"
+        period = str(row['Time period'])
         val = row['Value']
         
         if pd.isna(val): continue
@@ -94,3 +98,7 @@ with open(output_path, "w") as f:
     json.dump(boundaries, f)
 
 print(f"Data processing complete. Saved to {output_path}")
+print("\nMANUAL ACTION REQUIRED:")
+print("Please upload the following files to your Supabase 'screening-data' bucket:")
+print(f"1. {os.path.join(DATA_DIR, 'map_data.json')}")
+print(f"2. {os.path.join(DATA_DIR, 'metadata.json')}")

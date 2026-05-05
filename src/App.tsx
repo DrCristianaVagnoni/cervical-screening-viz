@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import { supabase } from './supabaseClient';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 
@@ -33,24 +34,45 @@ function App() {
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [yearIndex, setYearIndex] = useState<number>(0);
   const [selectedFeature, setSelectedFeature] = useState<FeatureProperties | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const selectedYear = availableYears[yearIndex] || '';
 
   useEffect(() => {
-    // Fetch metadata for years
-    fetch('/data/metadata.json')
-      .then(res => res.json())
-      .then(meta => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        
+        // Fetch metadata for years from Supabase Storage
+        const { data: metaData, error: metaError } = await supabase
+          .storage
+          .from('screening-data')
+          .download('metadata.json');
+        
+        if (metaError) throw metaError;
+        const meta = JSON.parse(await metaData.text());
         setAvailableYears(meta.years);
-        setYearIndex(meta.years.length - 1); // Start with latest year
-      });
+        setYearIndex(meta.years.length - 1);
 
-    // Fetch GeoJSON
-    fetch('/data/map_data.json')
-      .then(res => res.json())
-      .then(data => {
-        setGeoData(data);
-      });
+        // Fetch GeoJSON from Supabase Storage
+        const { data: mapData, error: mapError } = await supabase
+          .storage
+          .from('screening-data')
+          .download('map_data.json');
+        
+        if (mapError) throw mapError;
+        const geojson = JSON.parse(await mapData.text());
+        setGeoData(geojson);
+        
+      } catch (err) {
+        console.error("Error fetching data from Supabase:", err);
+        // Fallback to local if needed during dev
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
   }, []);
 
   const style = (feature: any) => {
@@ -94,6 +116,10 @@ function App() {
     { label: 'No Data', color: '#ccc' }
   ];
 
+  if (loading) {
+    return <div className="loading">Loading Screening Data from Cloud...</div>;
+  }
+
   return (
     <div className="dashboard">
       <header className="header">
@@ -113,7 +139,7 @@ function App() {
             />
             {geoData && availableYears.length > 0 && (
               <GeoJSON 
-                key={`${selectedYear}-${geoData.features.length}`} // Re-render when year changes
+                key={`${selectedYear}-${geoData.features.length}`}
                 data={geoData} 
                 style={style} 
                 onEachFeature={onEachFeature}
