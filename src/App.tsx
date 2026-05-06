@@ -42,42 +42,45 @@ function App() {
     async function fetchData() {
       try {
         setLoading(true);
-        console.log("Attempting to fetch data from Supabase bucket: screening-data");
-        
-        // Fetch metadata for years from Supabase Storage
-        const { data: metaData, error: metaError } = await supabase
-          .storage
-          .from('screening-data')
-          .download('metadata.json');
-        
-        if (metaError) {
-          console.error("Supabase Metadata Error:", metaError);
-          throw new Error(`Failed to load metadata: ${metaError.message}`);
-        }
-        
-        const meta = JSON.parse(await metaData.text());
-        console.log("Metadata loaded successfully:", meta);
-        setAvailableYears(meta.years);
-        setYearIndex(meta.years.length - 1);
+        console.log("Fetching data from Supabase...");
 
-        // Fetch GeoJSON from Supabase Storage
-        const { data: mapData, error: mapError } = await supabase
-          .storage
-          .from('screening-data')
-          .download('map_data.json');
+        // Use public URLs directly if the bucket is public
+        const metadataUrl = supabase.storage.from('screening-data').getPublicUrl('metadata.json').data.publicUrl;
+        const mapDataUrl = supabase.storage.from('screening-data').getPublicUrl('map_data.json').data.publicUrl;
+
+        console.log("Metadata URL:", metadataUrl);
+        console.log("Map Data URL:", mapDataUrl);
+
+        // Fetch Metadata
+        const metaRes = await fetch(metadataUrl);
+        const metaText = await metaRes.text();
+        if (!metaRes.ok) throw new Error(`HTTP ${metaRes.status}: ${metaText}`);
         
-        if (mapError) {
-          console.error("Supabase MapData Error:", mapError);
-          throw new Error(`Failed to load map data: ${mapError.message}`);
+        try {
+          const meta = JSON.parse(metaText);
+          setAvailableYears(meta.years);
+          setYearIndex(meta.years.length - 1);
+        } catch (e) {
+          console.error("Failed to parse Metadata JSON. Received:", metaText.substring(0, 200));
+          throw new Error("Metadata file is not valid JSON. Check Supabase permissions.");
         }
-        
-        const geojson = JSON.parse(await mapData.text());
-        console.log("GeoJSON loaded successfully");
-        setGeoData(geojson);
+
+        // Fetch Map Data
+        const mapRes = await fetch(mapDataUrl);
+        const mapText = await mapRes.text();
+        if (!mapRes.ok) throw new Error(`HTTP ${mapRes.status}: ${mapText}`);
+
+        try {
+          const geojson = JSON.parse(mapText);
+          setGeoData(geojson);
+        } catch (e) {
+          console.error("Failed to parse Map Data JSON. Received:", mapText.substring(0, 200));
+          throw new Error("Map data file is not valid JSON. Check Supabase permissions.");
+        }
         
       } catch (err: any) {
         console.error("Full Error Context:", err);
-        alert(`Error loading dashboard: ${err.message}. Please check if files are uploaded to Supabase and bucket is Public.`);
+        alert(`Error loading dashboard: ${err.message}`);
       } finally {
         setLoading(false);
       }
