@@ -35,6 +35,7 @@ function App() {
   const [yearIndex, setYearIndex] = useState<number>(0);
   const [selectedFeature, setSelectedFeature] = useState<FeatureProperties | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const selectedYear = availableYears[yearIndex] || '';
 
@@ -42,45 +43,36 @@ function App() {
     async function fetchData() {
       try {
         setLoading(true);
-        console.log("Fetching data from Supabase...");
-
-        // Use public URLs directly if the bucket is public
-        const metadataUrl = supabase.storage.from('screening-data').getPublicUrl('metadata.json').data.publicUrl;
-        const mapDataUrl = supabase.storage.from('screening-data').getPublicUrl('map_data.json').data.publicUrl;
+        setError(null);
+        
+        // 1. Get Public URLs
+        const storage = supabase.storage.from('screening-data');
+        const metadataUrl = storage.getPublicUrl('metadata.json').data.publicUrl;
+        const mapDataUrl = storage.getPublicUrl('map_data.json').data.publicUrl;
 
         console.log("Metadata URL:", metadataUrl);
-        console.log("Map Data URL:", mapDataUrl);
 
-        // Fetch Metadata
-        const metaRes = await fetch(metadataUrl);
-        const metaText = await metaRes.text();
-        if (!metaRes.ok) throw new Error(`HTTP ${metaRes.status}: ${metaText}`);
+        // 2. Fetch Metadata
+        const metaRes = await fetch(metadataUrl, { cache: 'no-store' });
+        if (!metaRes.ok) throw new Error(`Could not load metadata.json (HTTP ${metaRes.status}). Ensure file is in 'screening-data' bucket and bucket is public.`);
+        const meta = await metaRes.json();
         
-        try {
-          const meta = JSON.parse(metaText);
-          setAvailableYears(meta.years);
-          setYearIndex(meta.years.length - 1);
-        } catch (e) {
-          console.error("Failed to parse Metadata JSON. Received:", metaText.substring(0, 200));
-          throw new Error("Metadata file is not valid JSON. Check Supabase permissions.");
+        if (!meta.years || meta.years.length === 0) {
+          throw new Error("metadata.json is empty or has no years. Did you run the python script and upload the result?");
         }
+        
+        setAvailableYears(meta.years);
+        setYearIndex(meta.years.length - 1);
 
-        // Fetch Map Data
-        const mapRes = await fetch(mapDataUrl);
-        const mapText = await mapRes.text();
-        if (!mapRes.ok) throw new Error(`HTTP ${mapRes.status}: ${mapText}`);
-
-        try {
-          const geojson = JSON.parse(mapText);
-          setGeoData(geojson);
-        } catch (e) {
-          console.error("Failed to parse Map Data JSON. Received:", mapText.substring(0, 200));
-          throw new Error("Map data file is not valid JSON. Check Supabase permissions.");
-        }
+        // 3. Fetch Map Data
+        const mapRes = await fetch(mapDataUrl, { cache: 'no-store' });
+        if (!mapRes.ok) throw new Error(`Could not load map_data.json (HTTP ${mapRes.status}).`);
+        const geojson = await mapRes.json();
+        setGeoData(geojson);
         
       } catch (err: any) {
-        console.error("Full Error Context:", err);
-        alert(`Error loading dashboard: ${err.message}`);
+        console.error("Fetch Error:", err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
@@ -90,7 +82,10 @@ function App() {
   }, []);
 
   const style = (feature: any) => {
-    const coverage = feature.properties.coverage_data?.[selectedYear]?.['25_49'];
+    // Try both exact match and a fuzzy match for year formats
+    const coverageData = feature.properties.coverage_data;
+    const coverage = coverageData?.[selectedYear]?.['25_49'];
+    
     return {
       fillColor: getColor(coverage),
       weight: 1,
@@ -131,7 +126,22 @@ function App() {
   ];
 
   if (loading) {
-    return <div className="loading">Loading Screening Data from Cloud...</div>;
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+        <p>Loading Dashboard Data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="error-screen">
+        <h2>Dashboard Error</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    );
   }
 
   return (
@@ -223,6 +233,10 @@ function App() {
           )}
         </aside>
       </main>
+      
+      <div className="debug-panel">
+        DEBUG: Year: {selectedYear} | Years Loaded: {availableYears.length} | GeoJSON: {geoData ? 'YES' : 'NO'} | Features: {geoData?.features?.length || 0}
+      </div>
     </div>
   );
 }
