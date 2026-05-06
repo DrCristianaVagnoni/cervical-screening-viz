@@ -233,10 +233,6 @@ function App() {
           )}
         </aside>
       </main>
-      
-      <div className="debug-panel">
-        DEBUG: Year: {selectedYear} | Years Loaded: {availableYears.length} | GeoJSON: {geoData ? 'YES' : 'NO'} | Features: {geoData?.features?.length || 0}
-      </div>
     </div>
   );
 }
