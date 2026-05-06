@@ -42,6 +42,7 @@ function App() {
     async function fetchData() {
       try {
         setLoading(true);
+        console.log("Attempting to fetch data from Supabase bucket: screening-data");
         
         // Fetch metadata for years from Supabase Storage
         const { data: metaData, error: metaError } = await supabase
@@ -49,8 +50,13 @@ function App() {
           .from('screening-data')
           .download('metadata.json');
         
-        if (metaError) throw metaError;
+        if (metaError) {
+          console.error("Supabase Metadata Error:", metaError);
+          throw new Error(`Failed to load metadata: ${metaError.message}`);
+        }
+        
         const meta = JSON.parse(await metaData.text());
+        console.log("Metadata loaded successfully:", meta);
         setAvailableYears(meta.years);
         setYearIndex(meta.years.length - 1);
 
@@ -60,13 +66,18 @@ function App() {
           .from('screening-data')
           .download('map_data.json');
         
-        if (mapError) throw mapError;
+        if (mapError) {
+          console.error("Supabase MapData Error:", mapError);
+          throw new Error(`Failed to load map data: ${mapError.message}`);
+        }
+        
         const geojson = JSON.parse(await mapData.text());
+        console.log("GeoJSON loaded successfully");
         setGeoData(geojson);
         
-      } catch (err) {
-        console.error("Error fetching data from Supabase:", err);
-        // Fallback to local if needed during dev
+      } catch (err: any) {
+        console.error("Full Error Context:", err);
+        alert(`Error loading dashboard: ${err.message}. Please check if files are uploaded to Supabase and bucket is Public.`);
       } finally {
         setLoading(false);
       }
