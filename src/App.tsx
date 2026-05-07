@@ -148,7 +148,7 @@ function App() {
   return (
     <div className="dashboard">
       <header className="header">
-        <h1>Cervical Screening Coverage England</h1>
+        <h1>Cervical Cancer Screening Coverage in England</h1>
         <div className="header-brand">
           <Logo />
         </div>
