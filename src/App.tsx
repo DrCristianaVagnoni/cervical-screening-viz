@@ -148,6 +148,9 @@ function App() {
     <div className="dashboard">
       <header className="header">
         <h1>Cervical Screening Coverage England</h1>
+        <div className="header-brand">
+          <img src="/logo.svg" alt="Brand Logo" className="header-logo" />
+        </div>
       </header>
 
       <main className="main-content">
