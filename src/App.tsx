@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import { supabase } from './supabaseClient';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
+import logo from './logo.svg';
 
 // Type definitions
 interface CoverageData {
@@ -149,7 +150,7 @@ function App() {
       <header className="header">
         <h1>Cervical Screening Coverage England</h1>
         <div className="header-brand">
-          <img src="/logo.svg" alt="Brand Logo" className="header-logo" />
+          <img src={logo} alt="Brand Logo" className="header-logo" />
         </div>
       </header>
 
