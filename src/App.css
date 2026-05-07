@@ -45,7 +45,7 @@ h1, h2, h3, h4, h5, h6, button, input, select, textarea {
 .header-logo {
   height: 100%;
   width: auto;
-  max-width: 150px;
+  max-width: 250px;
 }
 
 .main-content {
